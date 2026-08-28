@@ -1,0 +1,28 @@
+{
+  "schemaVersion": "0.1",
+  "app": {
+    "name": "Controle Comercial",
+    "sourceType": "xlsx"
+  },
+  "entities": [
+    {
+      "name": "clientes",
+      "label": "Clientes",
+      "primaryKey": "id",
+      "fields": [
+        {"name": "id", "label": "ID", "type": "integer", "nullable": false},
+        {"name": "nome", "label": "Nome", "type": "string", "nullable": false}
+      ]
+    }
+  ],
+  "relationships": [],
+  "pages": [
+    {
+      "type": "crud",
+      "name": "clientes",
+      "label": "Clientes",
+      "entity": "clientes",
+      "features": ["list", "search", "filter", "create", "edit", "delete"]
+    }
+  ]
+}
