@@ -13,6 +13,7 @@ def build_app_schema(analysis: dict[str, Any]) -> dict[str, Any]:
                 "name": entity["name"],
                 "label": entity["source_name"],
                 "primaryKey": entity.get("primary_key"),
+                "storageKey": "__sf_rowid",
                 "fields": [
                     {
                         "name": field["name"],
@@ -35,10 +36,11 @@ def build_app_schema(analysis: dict[str, Any]) -> dict[str, Any]:
         )
 
     return {
-        "schemaVersion": "0.1",
+        "schemaVersion": "0.2",
         "app": {
             "name": analysis["workbook"]["filename"].rsplit(".", 1)[0],
             "sourceType": analysis["workbook"]["type"],
+            "runtime": {"database": "sqlite", "mode": "migrate"},
         },
         "entities": entities,
         "relationships": analysis.get("relationships", []),
