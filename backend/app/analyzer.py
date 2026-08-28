@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import csv
 import io
-import re
 from collections import Counter
 from datetime import date, datetime
 from pathlib import Path
@@ -10,13 +9,10 @@ from typing import Any
 
 from openpyxl import load_workbook
 
+from .naming import normalize_identifier
+
 
 MAX_SAMPLE_ROWS = 100
-
-
-def _slug(value: str) -> str:
-    value = re.sub(r"[^a-zA-Z0-9]+", "_", value.strip()).strip("_")
-    return value.lower() or "field"
 
 
 def _python_type(value: Any) -> str:
@@ -48,7 +44,7 @@ def _guess_primary_key(headers: list[str], rows: list[list[Any]]) -> str | None:
         return None
     candidates = []
     for index, header in enumerate(headers):
-        normalized = _slug(header)
+        normalized = normalize_identifier(header)
         score = 0
         if normalized == "id":
             score += 5
@@ -66,17 +62,33 @@ def _guess_primary_key(headers: list[str], rows: list[list[Any]]) -> str | None:
 
 def _sheet_to_entity(name: str, rows: list[list[Any]], formula_count: int = 0) -> dict[str, Any]:
     if not rows:
-        return {"name": _slug(name), "source_name": name, "fields": [], "primary_key": None, "row_count": 0, "formula_count": formula_count}
+        return {
+            "name": normalize_identifier(name, "sheet"),
+            "source_name": name,
+            "fields": [],
+            "primary_key": None,
+            "row_count": 0,
+            "formula_count": formula_count,
+        }
 
     headers = [str(value).strip() if value not in (None, "") else f"column_{i + 1}" for i, value in enumerate(rows[0])]
     data_rows = rows[1 : MAX_SAMPLE_ROWS + 1]
     fields = []
 
+    used_names: set[str] = set()
     for index, header in enumerate(headers):
+        field_name = normalize_identifier(header)
+        base_name = field_name
+        suffix = 2
+        while field_name in used_names:
+            field_name = f"{base_name}_{suffix}"
+            suffix += 1
+        used_names.add(field_name)
+
         sample = [row[index] if index < len(row) else None for row in data_rows]
         fields.append(
             {
-                "name": _slug(header),
+                "name": field_name,
                 "source_name": header,
                 "type": _infer_type(sample),
                 "nullable": any(value in (None, "") for value in sample) if sample else True,
@@ -85,7 +97,7 @@ def _sheet_to_entity(name: str, rows: list[list[Any]], formula_count: int = 0) -
         )
 
     return {
-        "name": _slug(name),
+        "name": normalize_identifier(name, "sheet"),
         "source_name": name,
         "fields": fields,
         "primary_key": _guess_primary_key(headers, data_rows),
@@ -137,7 +149,12 @@ def analyze_xlsx(content: bytes, filename: str) -> dict[str, Any]:
         entities.append(_sheet_to_entity(worksheet.title, rows, formula_count))
 
     return {
-        "workbook": {"filename": filename, "type": "xlsx", "sheet_count": len(workbook.sheetnames), "sheets": workbook.sheetnames},
+        "workbook": {
+            "filename": filename,
+            "type": "xlsx",
+            "sheet_count": len(workbook.sheetnames),
+            "sheets": workbook.sheetnames,
+        },
         "entities": entities,
         "relationships": _detect_relationships(entities),
     }
