@@ -20,6 +20,8 @@ def test_build_app_schema_creates_crud_page():
 
     schema = build_app_schema(analysis)
 
-    assert schema["schemaVersion"] == "0.1"
+    assert schema["schemaVersion"] == "0.2"
     assert schema["entities"][0]["primaryKey"] == "id"
+    assert schema["entities"][0]["storageKey"] == "__sf_rowid"
+    assert schema["app"]["runtime"] == {"database": "sqlite", "mode": "migrate"}
     assert schema["pages"][0]["type"] == "crud"
